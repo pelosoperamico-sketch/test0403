@@ -1,44 +1,295 @@
-cat > static/app.js <<'EOF'
 const app = document.querySelector("#app");
-app.innerHTML = `
-  <div class="container">
-    <div class="h1">Documentos</div>
 
+const columns = [
+  { key: "id", label: "N.ro Documento" },
+  { key: "vendor", label: "Proveedor" },
+  { key: "type", label: "Tipo" },
+  { key: "status", label: "Estado" },
+  { key: "docDate", label: "Fecha documento" },
+  { key: "uploadDate", label: "Fecha subida" },
+  { key: "amount", label: "Importe" },
+  { key: "payStatus", label: "Estado pago" },
+];
+
+const state = {
+  q: "",
+  sort: "uploadDate",
+  sortDir: "desc",
+  status: "ALL",
+  payStatus: "ALL",
+  from: "",
+  to: "",
+  visibleCols: Object.fromEntries(columns.map(c => [c.key, true])),
+  rows: [],
+};
+
+boot();
+
+async function boot() {
+  closeMenusOnOutsideClick();
+  await load();
+  render();
+}
+
+async function load() {
+  const params = new URLSearchParams({
+    q: state.q,
+    status: state.status,
+    payStatus: state.payStatus,
+    fromDate: state.from,
+    toDate: state.to,
+    sort: state.sort,
+    sortDir: state.sortDir,
+  });
+
+  const res = await fetch(`/api/invoices?${params.toString()}`);
+  const data = await res.json();
+  state.rows = data.rows || [];
+}
+
+function render() {
+  app.innerHTML = `
+    <div class="container">
+      <div class="h1">Documentos</div>
+
+      ${renderToolbar()}
+
+      <div style="height:12px"></div>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              ${visibleColumns().map(c => `<th>${escapeHtml(c.label)}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${state.rows.map(r => renderRow(r)).join("") || `<tr><td colspan="${visibleColumns().length}" class="muted">Nessun documento</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="footer">Backend Python (FastAPI) • Filtri/ordinamento lato server • Export CSV</div>
+    </div>
+  `;
+
+  bindToolbar();
+}
+
+function renderToolbar() {
+  return `
     <div class="toolbar">
-      <div class="search">🔎 <input placeholder="Buscar..." /></div>
-      <div>
-        <button class="btn">Ordenar por: <b>Fecha subida</b></button>
-        <button class="btn">Filtrar</button>
-        <button class="btn">Exportar</button>
-        <button class="btn primary">＋ Nuevo gasto</button>
+      <div class="toolbar-left">
+        <div class="search">
+          🔎
+          <input id="q" placeholder="Buscar..." value="${escapeHtml(state.q)}" />
+        </div>
+
+        <div class="dropdown">
+          <button class="btn" id="sortBtn">
+            Ordenar por: <b>${escapeHtml(labelForSort(state.sort))}</b> ▾
+          </button>
+          <div class="menu hide" id="sortMenu">
+            <div class="menu-title">Ordenar por</div>
+            ${["uploadDate","docDate","amount","id"].map(k => `
+              <label>
+                <input type="radio" name="sort" value="${k}" ${state.sort===k?"checked":""} />
+                ${escapeHtml(labelForSort(k))}
+              </label>
+            `).join("")}
+            <hr/>
+            <label><input type="radio" name="sortDir" value="desc" ${state.sortDir==="desc"?"checked":""} /> Desc</label>
+            <label><input type="radio" name="sortDir" value="asc" ${state.sortDir==="asc"?"checked":""} /> Asc</label>
+          </div>
+        </div>
+
+        <div class="dropdown">
+          <button class="btn" id="filterBtn">
+            <span class="dot"></span> Filtrar ▾
+          </button>
+          <div class="menu hide" id="filterMenu">
+            <div class="menu-title">Filtrar</div>
+
+            <label>
+              Estado:
+              <select id="status">
+                ${["ALL","Digitalizado","Requieren revisión","Rechazados"].map(s => `
+                  <option value="${s}" ${state.status===s?"selected":""}>${s}</option>
+                `).join("")}
+              </select>
+            </label>
+
+            <label>
+              Estado pago:
+              <select id="payStatus">
+                ${["ALL","Vencido","Pagado","Pendiente"].map(s => `
+                  <option value="${s}" ${state.payStatus===s?"selected":""}>${s}</option>
+                `).join("")}
+              </select>
+            </label>
+
+            <label>
+              Da:
+              <input id="from" type="date" value="${escapeHtml(state.from)}" />
+            </label>
+
+            <label>
+              A:
+              <input id="to" type="date" value="${escapeHtml(state.to)}" />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="toolbar-right">
+        <button class="btn" id="exportBtn">Exportar</button>
+
+        <div class="dropdown">
+          <button class="btn" id="colsBtn">Columnas ▾</button>
+          <div class="menu hide" id="colsMenu">
+            <div class="menu-title">Columnas</div>
+            ${columns.map(c => `
+              <label>
+                <input type="checkbox" data-col="${escapeHtml(c.key)}" ${state.visibleCols[c.key] ? "checked" : ""} />
+                ${escapeHtml(c.label)}
+              </label>
+            `).join("")}
+          </div>
+        </div>
+
+        <button class="btn primary" id="newBtn">＋ Nuevo gasto</button>
       </div>
     </div>
+  `;
+}
 
-    <div class="tablewrap">
-      <table>
-        <thead>
-          <tr>
-            <th>N.ro Documento</th><th>Proveedor</th><th>Tipo</th><th>Estado</th>
-            <th>Fecha documento</th><th>Fecha subida</th><th>Importe</th><th>Estado pago</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
-    </div>
-
-    <div class="footer">Se vedi questa pagina, static funziona ✅</div>
-  </div>
-`;
-
-(async () => {
-  const res = await fetch("/api/invoices");
-  const data = await res.json();
-  const rows = data.rows || [];
-  document.querySelector("#rows").innerHTML = rows.map(r => `
+function renderRow(r) {
+  const cols = visibleColumns();
+  return `
     <tr>
-      <td>${r.id}</td><td>${r.vendor}</td><td>${r.type}</td><td>${r.status}</td>
-      <td>${r.docDate}</td><td>${r.uploadDate}</td><td>${r.amount}</td><td>${r.payStatus}</td>
+      ${cols.map(c => `<td>${renderCell(c.key, r[c.key])}</td>`).join("")}
     </tr>
-  `).join("");
-})();
-EOF
+  `;
+}
+
+function renderCell(key, value) {
+  if (key === "status") return badge(value);
+  if (key === "payStatus") return badge(value);
+  if (key === "amount") return `<span class="money">${formatMoney(value)}</span>`;
+  if (key === "id") return `<code>${escapeHtml(value)}</code>`;
+  return escapeHtml(value);
+}
+
+function badge(v) {
+  const s = String(v ?? "");
+  const cls =
+    s === "Digitalizado" ? "green" :
+    s === "Vencido" ? "yellow" :
+    s === "Rechazados" ? "red" :
+    s === "Requieren revisión" ? "yellow" :
+    "";
+  return `<span class="badge ${cls}">${escapeHtml(s)}</span>`;
+}
+
+function bindToolbar() {
+  document.querySelector("#q")?.addEventListener("input", debounce(async (e) => {
+    state.q = e.target.value;
+    await load();
+    render();
+  }, 250));
+
+  document.querySelector("#sortBtn")?.addEventListener("click", () => toggleMenu("#sortMenu"));
+  document.querySelector("#filterBtn")?.addEventListener("click", () => toggleMenu("#filterMenu"));
+  document.querySelector("#colsBtn")?.addEventListener("click", () => toggleMenu("#colsMenu"));
+
+  document.querySelectorAll("input[name='sort']").forEach(el =>
+    el.addEventListener("change", async (e) => { state.sort = e.target.value; await load(); render(); })
+  );
+  document.querySelectorAll("input[name='sortDir']").forEach(el =>
+    el.addEventListener("change", async (e) => { state.sortDir = e.target.value; await load(); render(); })
+  );
+
+  document.querySelector("#status")?.addEventListener("change", async (e) => { state.status = e.target.value; await load(); render(); });
+  document.querySelector("#payStatus")?.addEventListener("change", async (e) => { state.payStatus = e.target.value; await load(); render(); });
+  document.querySelector("#from")?.addEventListener("change", async (e) => { state.from = e.target.value; await load(); render(); });
+  document.querySelector("#to")?.addEventListener("change", async (e) => { state.to = e.target.value; await load(); render(); });
+
+  document.querySelectorAll("#colsMenu input[type='checkbox']").forEach(el => {
+    el.addEventListener("change", (e) => {
+      state.visibleCols[e.target.dataset.col] = e.target.checked;
+      if (visibleColumns().length === 0) {
+        state.visibleCols[e.target.dataset.col] = true;
+        e.target.checked = true;
+        alert("Devi lasciare almeno una colonna visibile.");
+      }
+      render();
+    });
+  });
+
+  document.querySelector("#exportBtn")?.addEventListener("click", () => {
+    const colKeys = visibleColumns().map(c => c.key).join(",");
+    const params = new URLSearchParams({
+      q: state.q,
+      status: state.status,
+      payStatus: state.payStatus,
+      fromDate: state.from,
+      toDate: state.to,
+      sort: state.sort,
+      sortDir: state.sortDir,
+      cols: colKeys,
+    });
+    window.location.href = `/api/invoices.csv?${params.toString()}`;
+  });
+
+  document.querySelector("#newBtn")?.addEventListener("click", () => {
+    alert("Azione: Nuevo gasto (qui apri modal/pagina).");
+  });
+}
+
+function visibleColumns() {
+  return columns.filter(c => state.visibleCols[c.key]);
+}
+
+function labelForSort(k) {
+  if (k === "uploadDate") return "Fecha subida";
+  if (k === "docDate") return "Fecha documento";
+  if (k === "amount") return "Importe";
+  if (k === "id") return "N.ro Documento";
+  return k;
+}
+
+function toggleMenu(sel) {
+  const el = document.querySelector(sel);
+  if (!el) return;
+  el.classList.toggle("hide");
+}
+
+function closeMenusOnOutsideClick() {
+  document.addEventListener("click", (e) => {
+    document.querySelectorAll(".menu").forEach(m => {
+      const dd = m.closest(".dropdown");
+      if (!dd) return;
+      if (!dd.contains(e.target)) m.classList.add("hide");
+    });
+  });
+}
+
+function formatMoney(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "";
+  return v.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+
+function debounce(fn, ms) {
+  let t = null;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
+}
