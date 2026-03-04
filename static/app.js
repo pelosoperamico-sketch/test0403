@@ -1,3 +1,5 @@
+console.log("✅ app.js caricato (versione con dropdown)"); // <— se non lo vedi in console, stai ancora usando cache/vecchio file
+
 const app = document.querySelector("#app");
 
 const columns = [
@@ -52,7 +54,88 @@ function render() {
     <div class="container">
       <div class="h1">Documentos</div>
 
-      ${renderToolbar()}
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div class="search">
+            🔎
+            <input id="q" placeholder="Buscar..." value="${escapeHtml(state.q)}" />
+          </div>
+
+          <div class="dropdown">
+            <button class="btn" id="sortBtn">
+              Ordenar por: <b>${escapeHtml(labelForSort(state.sort))}</b> ▾
+            </button>
+            <div class="menu hide" id="sortMenu">
+              <div class="menu-title">Ordenar por</div>
+              ${["uploadDate","docDate","amount","id"].map(k => `
+                <label>
+                  <input type="radio" name="sort" value="${k}" ${state.sort===k?"checked":""} />
+                  ${escapeHtml(labelForSort(k))}
+                </label>
+              `).join("")}
+              <hr/>
+              <label><input type="radio" name="sortDir" value="desc" ${state.sortDir==="desc"?"checked":""} /> Desc</label>
+              <label><input type="radio" name="sortDir" value="asc" ${state.sortDir==="asc"?"checked":""} /> Asc</label>
+            </div>
+          </div>
+
+          <div class="dropdown">
+            <button class="btn" id="filterBtn">
+              <span class="dot"></span> Filtrar ▾
+            </button>
+            <div class="menu hide" id="filterMenu">
+              <div class="menu-title">Filtrar</div>
+
+              <label>
+                Estado:
+                <select id="status">
+                  ${["ALL","Digitalizado","Requieren revisión","Rechazados"].map(s => `
+                    <option value="${s}" ${state.status===s?"selected":""}>${s}</option>
+                  `).join("")}
+                </select>
+              </label>
+
+              <label>
+                Estado pago:
+                <select id="payStatus">
+                  ${["ALL","Vencido","Pagado","Pendiente"].map(s => `
+                    <option value="${s}" ${state.payStatus===s?"selected":""}>${s}</option>
+                  `).join("")}
+                </select>
+              </label>
+
+              <label>
+                Da:
+                <input id="from" type="date" value="${escapeHtml(state.from)}" />
+              </label>
+
+              <label>
+                A:
+                <input id="to" type="date" value="${escapeHtml(state.to)}" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="toolbar-right">
+          <button class="btn" id="exportBtn">Exportar</button>
+
+          <div class="dropdown">
+            <button class="btn" id="colsBtn">Columnas ▾</button>
+            <div class="menu hide" id="colsMenu">
+              <div class="menu-title">Columnas</div>
+              ${columns.map(c => `
+                <label>
+                  <input type="checkbox" data-col="${escapeHtml(c.key)}" ${state.visibleCols[c.key] ? "checked" : ""} />
+                  ${escapeHtml(c.label)}
+                </label>
+              `).join("")}
+            </div>
+          </div>
+
+          <button class="btn primary" id="newBtn">＋ Nuevo gasto</button>
+        </div>
+      </div>
 
       <div class="tablewrap">
         <table>
@@ -67,98 +150,11 @@ function render() {
         </table>
       </div>
 
-      <div class="footer">Ora i pulsanti funzionano (menu, filtri, export).</div>
+      <div class="footer">Tip: clicca “Filtrar” → deve aprire un menu.</div>
     </div>
   `;
 
   bindToolbar();
-}
-
-function renderToolbar() {
-  return `
-    <div class="toolbar">
-      <div class="toolbar-left">
-        <div class="search">
-          🔎
-          <input id="q" placeholder="Buscar..." value="${escapeHtml(state.q)}" />
-        </div>
-
-        <div class="dropdown">
-          <button class="btn" id="sortBtn">
-            Ordenar por: <b>${escapeHtml(labelForSort(state.sort))}</b> ▾
-          </button>
-          <div class="menu hide" id="sortMenu">
-            <div class="menu-title">Ordenar por</div>
-            ${["uploadDate","docDate","amount","id"].map(k => `
-              <label>
-                <input type="radio" name="sort" value="${k}" ${state.sort===k?"checked":""} />
-                ${escapeHtml(labelForSort(k))}
-              </label>
-            `).join("")}
-            <hr/>
-            <label><input type="radio" name="sortDir" value="desc" ${state.sortDir==="desc"?"checked":""} /> Desc</label>
-            <label><input type="radio" name="sortDir" value="asc" ${state.sortDir==="asc"?"checked":""} /> Asc</label>
-          </div>
-        </div>
-
-        <div class="dropdown">
-          <button class="btn" id="filterBtn">
-            <span class="dot"></span> Filtrar ▾
-          </button>
-          <div class="menu hide" id="filterMenu">
-            <div class="menu-title">Filtrar</div>
-
-            <label>
-              Estado:
-              <select id="status">
-                ${["ALL","Digitalizado","Requieren revisión","Rechazados"].map(s => `
-                  <option value="${s}" ${state.status===s?"selected":""}>${s}</option>
-                `).join("")}
-              </select>
-            </label>
-
-            <label>
-              Estado pago:
-              <select id="payStatus">
-                ${["ALL","Vencido","Pagado","Pendiente"].map(s => `
-                  <option value="${s}" ${state.payStatus===s?"selected":""}>${s}</option>
-                `).join("")}
-              </select>
-            </label>
-
-            <label>
-              Da:
-              <input id="from" type="date" value="${escapeHtml(state.from)}" />
-            </label>
-
-            <label>
-              A:
-              <input id="to" type="date" value="${escapeHtml(state.to)}" />
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div class="toolbar-right">
-        <button class="btn" id="exportBtn">Exportar</button>
-
-        <div class="dropdown">
-          <button class="btn" id="colsBtn">Columnas ▾</button>
-          <div class="menu hide" id="colsMenu">
-            <div class="menu-title">Columnas</div>
-            ${columns.map(c => `
-              <label>
-                <input type="checkbox" data-col="${escapeHtml(c.key)}" ${state.visibleCols[c.key] ? "checked" : ""} />
-                ${escapeHtml(c.label)}
-              </label>
-            `).join("")}
-          </div>
-        </div>
-
-        <button class="btn primary" id="newBtn">＋ Nuevo gasto</button>
-      </div>
-    </div>
-  `;
 }
 
 function renderRow(r) {
@@ -177,19 +173,21 @@ function renderCell(key, value) {
 }
 
 function bindToolbar() {
-  // search
+  // Debug click: deve stampare in console
+  document.querySelector("#filterBtn")?.addEventListener("click", () => {
+    console.log("👆 click Filtrar");
+    toggleMenu("#filterMenu");
+  });
+
+  document.querySelector("#sortBtn")?.addEventListener("click", () => toggleMenu("#sortMenu"));
+  document.querySelector("#colsBtn")?.addEventListener("click", () => toggleMenu("#colsMenu"));
+
   document.querySelector("#q")?.addEventListener("input", debounce(async (e) => {
     state.q = e.target.value;
     await load();
     render();
   }, 250));
 
-  // dropdown toggles
-  document.querySelector("#sortBtn")?.addEventListener("click", () => toggleMenu("#sortMenu"));
-  document.querySelector("#filterBtn")?.addEventListener("click", () => toggleMenu("#filterMenu"));
-  document.querySelector("#colsBtn")?.addEventListener("click", () => toggleMenu("#colsMenu"));
-
-  // sort
   document.querySelectorAll("input[name='sort']").forEach(el =>
     el.addEventListener("change", async (e) => { state.sort = e.target.value; await load(); render(); })
   );
@@ -197,18 +195,14 @@ function bindToolbar() {
     el.addEventListener("change", async (e) => { state.sortDir = e.target.value; await load(); render(); })
   );
 
-  // filters
   document.querySelector("#status")?.addEventListener("change", async (e) => { state.status = e.target.value; await load(); render(); });
   document.querySelector("#payStatus")?.addEventListener("change", async (e) => { state.payStatus = e.target.value; await load(); render(); });
   document.querySelector("#from")?.addEventListener("change", async (e) => { state.from = e.target.value; await load(); render(); });
   document.querySelector("#to")?.addEventListener("change", async (e) => { state.to = e.target.value; await load(); render(); });
 
-  // columns
   document.querySelectorAll("#colsMenu input[type='checkbox']").forEach(el => {
     el.addEventListener("change", (e) => {
       state.visibleCols[e.target.dataset.col] = e.target.checked;
-
-      // almeno 1 colonna visibile
       if (visibleColumns().length === 0) {
         state.visibleCols[e.target.dataset.col] = true;
         e.target.checked = true;
@@ -218,7 +212,6 @@ function bindToolbar() {
     });
   });
 
-  // export
   document.querySelector("#exportBtn")?.addEventListener("click", () => {
     const colKeys = visibleColumns().map(c => c.key).join(",");
     const params = new URLSearchParams({
@@ -234,7 +227,6 @@ function bindToolbar() {
     window.location.href = `/api/invoices.csv?${params.toString()}`;
   });
 
-  // new
   document.querySelector("#newBtn")?.addEventListener("click", () => {
     alert("Qui apri un modal o una pagina di inserimento.");
   });
