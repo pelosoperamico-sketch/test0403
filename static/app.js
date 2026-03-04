@@ -54,8 +54,6 @@ function render() {
 
       ${renderToolbar()}
 
-      <div style="height:12px"></div>
-
       <div class="tablewrap">
         <table>
           <thead>
@@ -69,7 +67,7 @@ function render() {
         </table>
       </div>
 
-      <div class="footer">Backend Python (FastAPI) • Filtri/ordinamento lato server • Export CSV</div>
+      <div class="footer">Ora i pulsanti funzionano (menu, filtri, export).</div>
     </div>
   `;
 
@@ -173,35 +171,25 @@ function renderRow(r) {
 }
 
 function renderCell(key, value) {
-  if (key === "status") return badge(value);
-  if (key === "payStatus") return badge(value);
   if (key === "amount") return `<span class="money">${formatMoney(value)}</span>`;
   if (key === "id") return `<code>${escapeHtml(value)}</code>`;
   return escapeHtml(value);
 }
 
-function badge(v) {
-  const s = String(v ?? "");
-  const cls =
-    s === "Digitalizado" ? "green" :
-    s === "Vencido" ? "yellow" :
-    s === "Rechazados" ? "red" :
-    s === "Requieren revisión" ? "yellow" :
-    "";
-  return `<span class="badge ${cls}">${escapeHtml(s)}</span>`;
-}
-
 function bindToolbar() {
+  // search
   document.querySelector("#q")?.addEventListener("input", debounce(async (e) => {
     state.q = e.target.value;
     await load();
     render();
   }, 250));
 
+  // dropdown toggles
   document.querySelector("#sortBtn")?.addEventListener("click", () => toggleMenu("#sortMenu"));
   document.querySelector("#filterBtn")?.addEventListener("click", () => toggleMenu("#filterMenu"));
   document.querySelector("#colsBtn")?.addEventListener("click", () => toggleMenu("#colsMenu"));
 
+  // sort
   document.querySelectorAll("input[name='sort']").forEach(el =>
     el.addEventListener("change", async (e) => { state.sort = e.target.value; await load(); render(); })
   );
@@ -209,14 +197,18 @@ function bindToolbar() {
     el.addEventListener("change", async (e) => { state.sortDir = e.target.value; await load(); render(); })
   );
 
+  // filters
   document.querySelector("#status")?.addEventListener("change", async (e) => { state.status = e.target.value; await load(); render(); });
   document.querySelector("#payStatus")?.addEventListener("change", async (e) => { state.payStatus = e.target.value; await load(); render(); });
   document.querySelector("#from")?.addEventListener("change", async (e) => { state.from = e.target.value; await load(); render(); });
   document.querySelector("#to")?.addEventListener("change", async (e) => { state.to = e.target.value; await load(); render(); });
 
+  // columns
   document.querySelectorAll("#colsMenu input[type='checkbox']").forEach(el => {
     el.addEventListener("change", (e) => {
       state.visibleCols[e.target.dataset.col] = e.target.checked;
+
+      // almeno 1 colonna visibile
       if (visibleColumns().length === 0) {
         state.visibleCols[e.target.dataset.col] = true;
         e.target.checked = true;
@@ -226,6 +218,7 @@ function bindToolbar() {
     });
   });
 
+  // export
   document.querySelector("#exportBtn")?.addEventListener("click", () => {
     const colKeys = visibleColumns().map(c => c.key).join(",");
     const params = new URLSearchParams({
@@ -241,8 +234,9 @@ function bindToolbar() {
     window.location.href = `/api/invoices.csv?${params.toString()}`;
   });
 
+  // new
   document.querySelector("#newBtn")?.addEventListener("click", () => {
-    alert("Azione: Nuevo gasto (qui apri modal/pagina).");
+    alert("Qui apri un modal o una pagina di inserimento.");
   });
 }
 
@@ -283,7 +277,8 @@ function formatMoney(n) {
 function escapeHtml(s) {
   return String(s ?? "")
     .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 function debounce(fn, ms) {
