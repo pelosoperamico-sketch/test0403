@@ -1,36 +1,18 @@
-console.log("✅ app.js caricato (versione con dropdown)"); // <— se non lo vedi in console, stai ancora usando cache/vecchio file
-
 const app = document.querySelector("#app");
-
-const columns = [
-  { key: "id", label: "N.ro Documento" },
-  { key: "vendor", label: "Proveedor" },
-  { key: "type", label: "Tipo" },
-  { key: "status", label: "Estado" },
-  { key: "docDate", label: "Fecha documento" },
-  { key: "uploadDate", label: "Fecha subida" },
-  { key: "amount", label: "Importe" },
-  { key: "payStatus", label: "Estado pago" },
-];
 
 const state = {
   q: "",
-  sort: "uploadDate",
-  sortDir: "desc",
   status: "ALL",
   payStatus: "ALL",
-  from: "",
-  to: "",
-  visibleCols: Object.fromEntries(columns.map(c => [c.key, true])),
   rows: [],
 };
 
 boot();
 
 async function boot() {
-  closeMenusOnOutsideClick();
   await load();
   render();
+  closeMenusOnOutsideClick();
 }
 
 async function load() {
@@ -38,12 +20,7 @@ async function load() {
     q: state.q,
     status: state.status,
     payStatus: state.payStatus,
-    fromDate: state.from,
-    toDate: state.to,
-    sort: state.sort,
-    sortDir: state.sortDir,
   });
-
   const res = await fetch(`/api/invoices?${params.toString()}`);
   const data = await res.json();
   state.rows = data.rows || [];
@@ -57,32 +34,22 @@ function render() {
       <div class="toolbar">
         <div class="toolbar-left">
           <div class="search">
-            🔎
-            <input id="q" placeholder="Buscar..." value="${escapeHtml(state.q)}" />
+            🔎 <input id="q" placeholder="Buscar..." value="${escapeHtml(state.q)}" />
           </div>
 
           <div class="dropdown">
-            <button class="btn" id="sortBtn">
-              Ordenar por: <b>${escapeHtml(labelForSort(state.sort))}</b> ▾
-            </button>
+            <button class="btn" id="sortBtn">Ordenar por: <b>Fecha subida</b> ▾</button>
             <div class="menu hide" id="sortMenu">
               <div class="menu-title">Ordenar por</div>
-              ${["uploadDate","docDate","amount","id"].map(k => `
-                <label>
-                  <input type="radio" name="sort" value="${k}" ${state.sort===k?"checked":""} />
-                  ${escapeHtml(labelForSort(k))}
-                </label>
-              `).join("")}
-              <hr/>
-              <label><input type="radio" name="sortDir" value="desc" ${state.sortDir==="desc"?"checked":""} /> Desc</label>
-              <label><input type="radio" name="sortDir" value="asc" ${state.sortDir==="asc"?"checked":""} /> Asc</label>
+              <label><input type="radio" name="sort" checked /> Fecha subida</label>
+              <label><input type="radio" name="sort" /> Fecha documento</label>
+              <label><input type="radio" name="sort" /> Importe</label>
+              <div class="footer">Demo: solo UI</div>
             </div>
           </div>
 
           <div class="dropdown">
-            <button class="btn" id="filterBtn">
-              <span class="dot"></span> Filtrar ▾
-            </button>
+            <button class="btn" id="filterBtn"><span class="dot"></span>Filtrar ▾</button>
             <div class="menu hide" id="filterMenu">
               <div class="menu-title">Filtrar</div>
 
@@ -104,35 +71,24 @@ function render() {
                 </select>
               </label>
 
-              <label>
-                Da:
-                <input id="from" type="date" value="${escapeHtml(state.from)}" />
-              </label>
-
-              <label>
-                A:
-                <input id="to" type="date" value="${escapeHtml(state.to)}" />
-              </label>
+              <button class="btn" id="applyBtn">Aplicar</button>
             </div>
           </div>
         </div>
 
         <div class="toolbar-right">
           <button class="btn" id="exportBtn">Exportar</button>
-
           <div class="dropdown">
             <button class="btn" id="colsBtn">Columnas ▾</button>
             <div class="menu hide" id="colsMenu">
               <div class="menu-title">Columnas</div>
-              ${columns.map(c => `
-                <label>
-                  <input type="checkbox" data-col="${escapeHtml(c.key)}" ${state.visibleCols[c.key] ? "checked" : ""} />
-                  ${escapeHtml(c.label)}
-                </label>
-              `).join("")}
+              <label><input type="checkbox" checked /> N.ro Documento</label>
+              <label><input type="checkbox" checked /> Proveedor</label>
+              <label><input type="checkbox" checked /> Tipo</label>
+              <label><input type="checkbox" checked /> Estado</label>
+              <div class="footer">Demo: solo UI</div>
             </div>
           </div>
-
           <button class="btn primary" id="newBtn">＋ Nuevo gasto</button>
         </div>
       </div>
@@ -141,112 +97,62 @@ function render() {
         <table>
           <thead>
             <tr>
-              ${visibleColumns().map(c => `<th>${escapeHtml(c.label)}</th>`).join("")}
+              <th>N.ro Documento</th><th>Proveedor</th><th>Tipo</th><th>Estado</th>
+              <th>Fecha documento</th><th>Fecha subida</th><th>Importe</th><th>Estado pago</th>
             </tr>
           </thead>
-          <tbody>
-            ${state.rows.map(r => renderRow(r)).join("") || `<tr><td colspan="${visibleColumns().length}" class="muted">Nessun documento</td></tr>`}
+          <tbody id="rows">
+            ${state.rows.map(r => `
+              <tr>
+                <td>${escapeHtml(r.id)}</td><td>${escapeHtml(r.vendor)}</td><td>${escapeHtml(r.type)}</td><td>${escapeHtml(r.status)}</td>
+                <td>${escapeHtml(r.docDate)}</td><td>${escapeHtml(r.uploadDate)}</td><td>${escapeHtml(r.amount)}</td><td>${escapeHtml(r.payStatus)}</td>
+              </tr>
+            `).join("")}
           </tbody>
         </table>
       </div>
 
-      <div class="footer">Tip: clicca “Filtrar” → deve aprire un menu.</div>
+      <div class="footer">Ora “Filtrar” apre un menu e “Aplicar” aggiorna i dati.</div>
     </div>
   `;
 
-  bindToolbar();
+  bind();
 }
 
-function renderRow(r) {
-  const cols = visibleColumns();
-  return `
-    <tr>
-      ${cols.map(c => `<td>${renderCell(c.key, r[c.key])}</td>`).join("")}
-    </tr>
-  `;
-}
-
-function renderCell(key, value) {
-  if (key === "amount") return `<span class="money">${formatMoney(value)}</span>`;
-  if (key === "id") return `<code>${escapeHtml(value)}</code>`;
-  return escapeHtml(value);
-}
-
-function bindToolbar() {
-  // Debug click: deve stampare in console
-  document.querySelector("#filterBtn")?.addEventListener("click", () => {
-    console.log("👆 click Filtrar");
-    toggleMenu("#filterMenu");
-  });
-
-  document.querySelector("#sortBtn")?.addEventListener("click", () => toggleMenu("#sortMenu"));
-  document.querySelector("#colsBtn")?.addEventListener("click", () => toggleMenu("#colsMenu"));
-
-  document.querySelector("#q")?.addEventListener("input", debounce(async (e) => {
+function bind() {
+  // search
+  document.querySelector("#q").addEventListener("input", debounce(async (e) => {
     state.q = e.target.value;
     await load();
     render();
   }, 250));
 
-  document.querySelectorAll("input[name='sort']").forEach(el =>
-    el.addEventListener("change", async (e) => { state.sort = e.target.value; await load(); render(); })
-  );
-  document.querySelectorAll("input[name='sortDir']").forEach(el =>
-    el.addEventListener("change", async (e) => { state.sortDir = e.target.value; await load(); render(); })
-  );
+  // open menus
+  document.querySelector("#filterBtn").addEventListener("click", () => toggleMenu("filterMenu"));
+  document.querySelector("#sortBtn").addEventListener("click", () => toggleMenu("sortMenu"));
+  document.querySelector("#colsBtn").addEventListener("click", () => toggleMenu("colsMenu"));
 
-  document.querySelector("#status")?.addEventListener("change", async (e) => { state.status = e.target.value; await load(); render(); });
-  document.querySelector("#payStatus")?.addEventListener("change", async (e) => { state.payStatus = e.target.value; await load(); render(); });
-  document.querySelector("#from")?.addEventListener("change", async (e) => { state.from = e.target.value; await load(); render(); });
-  document.querySelector("#to")?.addEventListener("change", async (e) => { state.to = e.target.value; await load(); render(); });
-
-  document.querySelectorAll("#colsMenu input[type='checkbox']").forEach(el => {
-    el.addEventListener("change", (e) => {
-      state.visibleCols[e.target.dataset.col] = e.target.checked;
-      if (visibleColumns().length === 0) {
-        state.visibleCols[e.target.dataset.col] = true;
-        e.target.checked = true;
-        alert("Devi lasciare almeno una colonna visibile.");
-      }
-      render();
-    });
+  // apply filters
+  document.querySelector("#applyBtn").addEventListener("click", async () => {
+    state.status = document.querySelector("#status").value;
+    state.payStatus = document.querySelector("#payStatus").value;
+    await load();
+    render();
   });
 
-  document.querySelector("#exportBtn")?.addEventListener("click", () => {
-    const colKeys = visibleColumns().map(c => c.key).join(",");
-    const params = new URLSearchParams({
-      q: state.q,
-      status: state.status,
-      payStatus: state.payStatus,
-      fromDate: state.from,
-      toDate: state.to,
-      sort: state.sort,
-      sortDir: state.sortDir,
-      cols: colKeys,
-    });
-    window.location.href = `/api/invoices.csv?${params.toString()}`;
+  // export demo
+  document.querySelector("#exportBtn").addEventListener("click", () => {
+    alert("Export: aggiungiamo /api/invoices.csv quando vuoi.");
   });
 
-  document.querySelector("#newBtn")?.addEventListener("click", () => {
-    alert("Qui apri un modal o una pagina di inserimento.");
+  // new demo
+  document.querySelector("#newBtn").addEventListener("click", () => {
+    alert("Nuevo gasto: qui apri form/modal.");
   });
 }
 
-function visibleColumns() {
-  return columns.filter(c => state.visibleCols[c.key]);
-}
-
-function labelForSort(k) {
-  if (k === "uploadDate") return "Fecha subida";
-  if (k === "docDate") return "Fecha documento";
-  if (k === "amount") return "Importe";
-  if (k === "id") return "N.ro Documento";
-  return k;
-}
-
-function toggleMenu(sel) {
-  const el = document.querySelector(sel);
-  if (!el) return;
+function toggleMenu(id) {
+  const el = document.getElementById(id);
   el.classList.toggle("hide");
 }
 
@@ -254,23 +160,9 @@ function closeMenusOnOutsideClick() {
   document.addEventListener("click", (e) => {
     document.querySelectorAll(".menu").forEach(m => {
       const dd = m.closest(".dropdown");
-      if (!dd) return;
       if (!dd.contains(e.target)) m.classList.add("hide");
     });
   });
-}
-
-function formatMoney(n) {
-  const v = Number(n);
-  if (!Number.isFinite(v)) return "";
-  return v.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
-}
-
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
 
 function debounce(fn, ms) {
@@ -279,4 +171,12 @@ function debounce(fn, ms) {
     clearTimeout(t);
     t = setTimeout(() => fn(...args), ms);
   };
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;");
 }
